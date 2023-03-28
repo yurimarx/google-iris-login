@@ -1,0 +1,77 @@
+ROUTINE ZAUTHENTICATE
+ZAUTHENTICATE(ServiceName,Namespace,Username,Password,Credentials,Properties) PUBLIC {
+#include %occErrors
+#include %sySecurity
+ Set $ZTRAP="Error"
+ Quit $SYSTEM.Status.OK()
+Error //Handle any COS errors here
+  //Reset error trap to avoid infinite loop
+  Set $ZTRAP=""
+  //Return the generalized COS error message #5002
+  Quit $SYSTEM.Status.Error(5002 /*$$$CacheError*/,$ZERROR)
+ }
+ 
+GetCredentials(ServiceName,Namespace,Username,Password,Credentials) Public {
+  
+  Set GooglePassword = $SYSTEM.Util.GetEnviron("GOOGLE_PASSWORD")
+  Set GlobalPassword = $EXTRACT(##class(dc.login.CypherUtil).DoAESCBCEncrypt(GooglePassword),1,20)
+  Set UserExists = 0
+  
+  // For a web application, authenticate as AdminUser.
+  If $ISOBJECT($GET(%request)) { 
+	  Set App = $SYSTEM.Util.GetEnviron("ISC_App")
+	  Set:App="" App = "/csp/sys"
+	  Set GN = "^%ZAPM.AppsDelegate"
+    If $EXTRACT(App,*)'="/" {
+      Set App=App_"/" 
+    }  
+    
+    If %request.Application=App || ($DATA(@GN@(App))) {
+        
+      Set Email = %request.GetCookie("email")
+          
+      If %request.Data("IRISUsername",1)'="" {
+          Set Username = %request.Data("IRISUsername",1) 
+          Set Password = %request.Data("IRISPassword",1)
+          Quit $SYSTEM.Status.OK()
+      }
+      ElseIf Email '= "" {
+        Set EmailUser = $PIECE(Email,"@")
+          
+        Set qry = "select * from Security.Users where EmailAddress = ?"
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set qStatus = tStatement.%Prepare(qry)
+        
+        Set rset = tStatement.%Execute(Email)
+        
+        While rset.%Next() { 
+          Set UserExists = 1
+        }
+          
+        If UserExists = 1 {
+          Set Username = rset.Name
+          Set Password = GlobalPassword
+          Quit $SYSTEM.Status.OK()
+        } Else {
+          set $nameSpace = "%SYS"
+          if '##class(Security.Users).Exists($PIECE(Email,"@")) {
+            Set status = ##class(Security.Users).Create($PIECE(Email,"@"),"%ALL",GlobalPassword,$PIECE(Email,"@"),"","","",0,1,"",1,0,"","","","")
+            Set status = ##class(Security.Users).Get($PIECE(Email,"@"),.properties)
+            set properties("EmailAddress")=Email
+            set status = ##class(Security.Users).Modify($PIECE(Email,"@"), .properties)
+            If status = 1 {
+              set Username = $PIECE(Email,"@")
+              Set Password = GlobalPassword
+          
+              Quit $SYSTEM.Status.OK() 
+            }
+          }
+        }
+      } 
+    }
+  }
+  
+  // For all other conditions, deny access.
+  Quit $SYSTEM.Status.Error($$$AccessDenied)
+
+}

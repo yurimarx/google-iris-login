@@ -1,0 +1,24 @@
+    // Unexpire passwords to simplify dev mode. Comment these two lines for Production use
+    zn "%SYS"
+    Do ##class(Security.Users).UnExpireUserPasswords("*")
+    Do ##class(Security.Users).AddRoles("CSPSystem", "%All")    
+
+    ; enabling callin for Embedded Python
+    do ##class(Security.Services).Get("%Service_CallIn",.prop)
+    set prop("Enabled")=1
+    set prop("AutheEnabled")=48
+    do ##class(Security.Services).Modify("%Service_CallIn",.prop)
+
+    // create IRISAPP namespace
+    do $SYSTEM.OBJ.Load("/home/irisowner/irisdev/Installer.cls", "ck")
+    do $System.OBJ.ImportDir("/home/irisowner/irisdev/src","*.cls;*.mac;*.int;*.inc;*.dfi","ck",,1)
+    do $System.OBJ.ImportDir("/home/irisowner/irisdev/mac","*.cls;*.mac;*.int;*.inc;*.dfi","ck",,1)
+    set sc = ##class(App.Installer).setup() 
+
+    // comment the line below for production images
+    //zpm "install passwordless"
+    // load all the code of the project as a ZPM package
+    zn "IRISAPP"
+    
+    zpm "load /home/irisowner/irisdev/ -v":1:1
+    halt
