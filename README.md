@@ -11,7 +11,7 @@ This is an app to add social login using Google.
 Clone/git pull the repo into any local directory
 
 ```
-$ git clone $ git clone https://github.com/intersystems-community/intersystems-iris-dev-template.git
+$ git clone https://github.com/intersystems-community/intersystems-iris-dev-template.git
 ```
 
 Go to the .env file and input your CLIENT_ID generated in your Google Cloud Console (to generate a CLIENT_ID see the article https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid)
